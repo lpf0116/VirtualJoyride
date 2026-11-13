@@ -348,7 +348,7 @@ class MainActivity : AppCompatActivity() {
 
         running = true
         refresh()
-        toast("开始遛弯，打开地图 App 看蓝点")
+        toast("开始跑步，打开地图 App 看蓝点")
     }
 
     private fun stopMock() {
