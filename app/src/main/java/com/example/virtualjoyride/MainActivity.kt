@@ -23,7 +23,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.osmdroid.config.Configuration
 import org.osmdroid.events.MapEventsReceiver
-import org.osmdroid.tileprovider.tilesource.TileSource
+import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
@@ -56,7 +56,7 @@ class MainActivity : AppCompatActivity() {
     private var centeredOnce = false
 
     /** 卫星影像底图：同样是 WGS-84，OSM 拉不动的时候用它。 */
-    private val satelliteSource = TileSource(
+        private val satelliteSource = XYTileSource(
         "ArcGISSatellite",
         1,
         19,
@@ -178,11 +178,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (points.size >= 2) {
-            val line = Polyline().apply {
-                setPoints(points.map { GeoPoint(it.lat, it.lon) })
-                outlinePaint.color = 0xFF1E88E5.toInt()
-                outlinePaint.strokeWidth = 9f
-            }
+            val geoPoints = points.map { GeoPoint(it.lat, it.lon) }
+            val line = Polyline()
+            line.setPoints(geoPoints)
+            line.outlinePaint.color = 0xFF1E88E5.toInt()
+            line.outlinePaint.strokeWidth = 9f
             overlays.add(line)
         }
 
