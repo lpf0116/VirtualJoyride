@@ -30,6 +30,8 @@ import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Overlay
 import org.osmdroid.views.overlay.Polyline
 import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
@@ -39,6 +41,11 @@ class MainActivity : AppCompatActivity() {
         private const val DEFAULT_LAT = 39.9042
         private const val DEFAULT_LON = 116.4074
         private const val ROUTE_FILE = "route.json"
+
+        /** 部分瓦片服务器会拒绝非浏览器 UA，用这个标识请求。 */
+        private const val TILE_USER_AGENT =
+            "Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 " +
+                "(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
     }
 
     private lateinit var mapView: MapView
@@ -77,7 +84,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         Configuration.getInstance().apply {
-            userAgentValue = packageName
+            // 有些瓦片服务器会拒绝非浏览器 UA，这里用一个正常的浏览器标识
+            userAgentValue = TILE_USER_AGENT
             osmdroidBasePath = File(cacheDir, "osmdroid")
             osmdroidTileCache = File(cacheDir, "osmdroid/tiles")
         }
@@ -107,7 +115,13 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.btnUndo).setOnClickListener { undo() }
         findViewById<Button>(R.id.btnClear).setOnClickListener { clearAll() }
-        findViewById<Button>(R.id.btnTile).setOnClickListener { toggleTile() }
+        findViewById<Button>(R.id.btnTile).apply {
+            setOnClickListener { toggleTile() }
+            setOnLongClickListener {
+                diagnoseTiles()
+                true
+            }
+        }
         btnStart.setOnClickListener { if (running) stopMock() else startMock() }
         etSpeed.setOnEditorActionListener { _, _, _ ->
             refresh()
@@ -192,6 +206,52 @@ class MainActivity : AppCompatActivity() {
         // 事件层放最后：无论 osmdroid 是正序还是倒序遍历，点空白处都能加上点
         overlays.add(eventsOverlay)
         mapView.invalidate()
+    }
+
+    /**
+     * 底图诊断：长按「卫星图 / 街道图」按钮触发。
+     * 按当前视角中心算出对应的瓦片地址，用同样的 UA 手动请求一次，
+     * 把 HTTP 码、内容类型、字节数直接显示出来——一眼能看出卡在哪一环。
+     */
+    private fun diagnoseTiles() {
+        val zoom = mapView.zoomLevelDouble.toInt().coerceIn(1, 19)
+        val center = mapView.mapCenter ?: return
+        val n = 1 shl zoom
+        val x = (((center.longitude + 180.0) / 360.0) * n).toInt().coerceIn(0, n - 1)
+        val latRad = Math.toRadians(center.latitude)
+        val y = ((1.0 - Math.log(Math.tan(latRad) + 1.0 / Math.cos(latRad)) / Math.PI) / 2.0 * n)
+            .toInt().coerceIn(0, n - 1)
+        val url = "https://server.arcgisonline.com/ArcGIS/rest/services/" +
+            "World_Imagery/MapServer/tile/$zoom/$y/$x"
+
+        tvStatus.text = "正在诊断底图…"
+
+        Thread {
+            val text = StringBuilder("请求地址：\n$url\n\n")
+            try {
+                val conn = URL(url).openConnection() as HttpURLConnection
+                conn.connectTimeout = 10_000
+                conn.readTimeout = 15_000
+                conn.setRequestProperty("User-Agent", TILE_USER_AGENT)
+                val code = conn.responseCode
+                val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+                val bytes = stream?.use { it.readBytes() } ?: ByteArray(0)
+                text.append("HTTP $code\n")
+                text.append("类型：${conn.contentType ?: "未知"}\n")
+                text.append("大小：${bytes.size} 字节")
+                conn.disconnect()
+            } catch (e: Exception) {
+                text.append("请求失败：${e.javaClass.simpleName}\n${e.message ?: ""}")
+            }
+            runOnUiThread {
+                AlertDialog.Builder(this)
+                    .setTitle("底图诊断")
+                    .setMessage(text.toString())
+                    .setPositiveButton("关闭", null)
+                    .show()
+                refresh()
+            }
+        }.start()
     }
 
     private fun toggleTile() {
