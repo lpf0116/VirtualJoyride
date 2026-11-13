@@ -23,7 +23,6 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.osmdroid.config.Configuration
 import org.osmdroid.events.MapEventsReceiver
-import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.MapEventsOverlay
@@ -57,30 +56,17 @@ class MainActivity : AppCompatActivity() {
     /**
      * 底图统统用 Esri 的公开服务：
      * OSM 官方瓦片在国内基本连不上，而 Esri 的 arcgisonline 一般可达。
-     * 两者都是 WGS-84 / Web 墨卡托，和系统定位、OSM 坐标系一致，不需要做偏移转换。
+     * 两者都是 WGS-84 / Web 墨卡托，和系统定位坐标系一致，不需要做偏移转换。
+     * 注意必须用 EsriTileSource，因为 Esri 的路径顺序是 z/y/x，和 osmdroid 默认的 z/x/y 相反。
      */
-    private val satelliteSource = XYTileSource(
-        "ArcGISSatellite",
-        1,
-        19,
-        256,
-        ".png",
-        arrayOf(
-            "https://server.arcgisonline.com/ArcGIS/rest/services/" +
-                "World_Imagery/MapServer/tile/{z}/{y}/{x}"
-        )
+    private val satelliteSource = EsriTileSource(
+        "EsriSatellite",
+        "World_Imagery/MapServer/tile"
     )
 
-    private val streetSource = XYTileSource(
-        "ArcGISStreet",
-        1,
-        19,
-        256,
-        ".png",
-        arrayOf(
-            "https://server.arcgisonline.com/ArcGIS/rest/services/" +
-                "World_Street_Map/MapServer/tile/{z}/{y}/{x}"
-        )
+    private val streetSource = EsriTileSource(
+        "EsriStreet",
+        "World_Street_Map/MapServer/tile"
     )
 
     @Suppress("UNCHECKED_CAST")
