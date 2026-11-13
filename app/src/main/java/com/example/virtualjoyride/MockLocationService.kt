@@ -245,7 +245,7 @@ class MockLocationService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("正在遛弯")
+            .setContentTitle("肥鱼正在帮你跑，快说谢谢大肥鱼")
             .setContentText("模拟定位运行中，点开可停止")
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setOngoing(true)
