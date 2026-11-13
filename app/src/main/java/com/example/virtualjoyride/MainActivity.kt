@@ -24,7 +24,6 @@ import org.json.JSONObject
 import org.osmdroid.config.Configuration
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.XYTileSource
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.MapEventsOverlay
@@ -52,11 +51,15 @@ class MainActivity : AppCompatActivity() {
 
     private val points = mutableListOf<RoutePoint>()
     private var running = false
-    private var satellite = false
+    private var satellite = true
     private var centeredOnce = false
 
-    /** 卫星影像底图：同样是 WGS-84，OSM 拉不动的时候用它。 */
-        private val satelliteSource = XYTileSource(
+    /**
+     * 底图统统用 Esri 的公开服务：
+     * OSM 官方瓦片在国内基本连不上，而 Esri 的 arcgisonline 一般可达。
+     * 两者都是 WGS-84 / Web 墨卡托，和系统定位、OSM 坐标系一致，不需要做偏移转换。
+     */
+    private val satelliteSource = XYTileSource(
         "ArcGISSatellite",
         1,
         19,
@@ -65,6 +68,18 @@ class MainActivity : AppCompatActivity() {
         arrayOf(
             "https://server.arcgisonline.com/ArcGIS/rest/services/" +
                 "World_Imagery/MapServer/tile/{z}/{y}/{x}"
+        )
+    )
+
+    private val streetSource = XYTileSource(
+        "ArcGISStreet",
+        1,
+        19,
+        256,
+        ".png",
+        arrayOf(
+            "https://server.arcgisonline.com/ArcGIS/rest/services/" +
+                "World_Street_Map/MapServer/tile/{z}/{y}/{x}"
         )
     )
 
@@ -89,7 +104,7 @@ class MainActivity : AppCompatActivity() {
         cbLoop = findViewById(R.id.cbLoop)
         btnStart = findViewById(R.id.btnStart)
 
-        mapView.setTileSource(TileSourceFactory.MAPNIK)
+        mapView.setTileSource(satelliteSource)
         mapView.setMultiTouchControls(true)
         mapView.controller.setZoom(17.0)
         mapView.controller.setCenter(GeoPoint(DEFAULT_LAT, DEFAULT_LON))
@@ -178,6 +193,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (points.size >= 2) {
+            // 注意：不能写成 Polyline().apply { setPoints(points.map { ... }) }
+            // 因为 Polyline 自己有个 points 属性，apply 里会把它遮蔽掉
             val geoPoints = points.map { GeoPoint(it.lat, it.lon) }
             val line = Polyline()
             line.setPoints(geoPoints)
@@ -193,8 +210,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun toggleTile() {
         satellite = !satellite
-        mapView.setTileSource(if (satellite) satelliteSource else TileSourceFactory.MAPNIK)
-        toast(if (satellite) "卫星影像" else "OSM 街道图")
+        mapView.setTileSource(if (satellite) satelliteSource else streetSource)
+        findViewById<Button>(R.id.btnTile).text = if (satellite) "街道图" else "卫星图"
+        toast(if (satellite) "卫星影像" else "街道图")
     }
 
     private fun saveRoute() {

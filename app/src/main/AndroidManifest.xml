@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+        这条权限在 Android 6 之后已被系统废弃，声明它不会带来任何运行时权限，
+        但部分国产 ROM（MIUI/HyperOS、部分 ColorOS）的「选择模拟位置信息应用」
+        列表仍然会筛选「是否声明了这条权限」，不写就会出现应用不出现在列表里的情况。
+    -->
+    <uses-permission
+        android:name="android.permission.ACCESS_MOCK_LOCATION"
+        tools:ignore="MockLocation" />
 
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
